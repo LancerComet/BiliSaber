@@ -1,0 +1,13 @@
+﻿{
+  "$schema": "https://raw.githubusercontent.com/nike4613/ModSaber-MetadataFileSchema/master/Schema.json",
+  "id": "BiliSaber",
+  "name": "BiliSaber",
+  "author": "LancerComet",
+  "version": "0.0.1",
+  "description": "Display Bilibili Live Danmaku in BeatSaber.",
+  "gameVersion": "1.9.0",
+  "dependsOn": {
+
+  },
+  "features": []
+}
