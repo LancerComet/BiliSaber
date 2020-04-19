@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using Newtonsoft.Json;
 
 namespace BiliSaber.Bilibili {
   public class DanmakuPacket {
@@ -55,10 +54,7 @@ namespace BiliSaber.Bilibili {
     public static DanmakuPacket CreateGreetingPacket (int uid, int roomId) {
       return new DanmakuPacket(
         1, DanmakuOperation.GreetingReq, 1,
-        JsonConvert.SerializeObject(new {
-          uid = uid,
-          roomid = roomId
-        })
+        "{\"uid\":" + uid + ",\"roomid\":" + roomId + "}"
       );
     }
 
@@ -71,10 +67,7 @@ namespace BiliSaber.Bilibili {
     public static DanmakuPacket CreateHeartBeatPacket (int uid, int roomId) {
       return new DanmakuPacket(
         1, DanmakuOperation.HeartBeatReq, 1,
-        JsonConvert.SerializeObject(new {
-          uid = uid,
-          roomid = roomId
-        })
+        "{\"uid\":" + uid + ",\"roomid\":" + roomId + "}"
       );
     }
   }

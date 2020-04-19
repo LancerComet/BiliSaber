@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace BiliSaber.Bilibili {
   public static class DataView {
@@ -52,11 +53,7 @@ namespace BiliSaber.Bilibili {
     /// <param name="bytes"></param>
     /// <returns></returns>
     public static byte[] MergeBytes (IEnumerable<byte[]> bytes) {
-      var totalLength = 0;
-      foreach (var buffer in bytes) {
-        totalLength += buffer.Length;
-      }
-
+      var totalLength = bytes.Sum(buffer => buffer.Length);
       var result = new byte[totalLength];
       var offset = 0;
 

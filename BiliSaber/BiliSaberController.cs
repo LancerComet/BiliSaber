@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BiliSaber.Bilibili;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
-using WebSocketSharp;
 
 namespace BiliSaber {
   /// <summary>
@@ -16,46 +11,90 @@ namespace BiliSaber {
     public static BiliSaberController instance { get; private set; }
 
     private const int RoomId = 31917;
-    private WebSocket _ws;
+    private const int Uid = 141042;
+    private DanmakuClient _danmakuClient;
 
-    /// <summary>
-    /// 关闭 WS 连接.
-    /// </summary>
-    private void WsDisconnect () {
-      this._ws?.Close();
-    }
-
-    /// <summary>
-    /// 初始化 WebSocket.
-    /// </summary>
-    private void WsConnect () {
-      if (this._ws != null) {
-        this.WsDisconnect();
+    private void OnDanmakuMessage (JObject danmakuJson) {
+      var info = danmakuJson["info"]?.Value<JArray>();
+      if (info != null) {
+        var message = info[1]?.Value<string>() ?? "";
+        var username = info[2]?.Value<JArray>()?[1]?.Value<string>() ?? "";
+        Logger.Log?.Info($"[BiliSaber][DanmakuMessage] {username}: {message}");
       }
-
-      var ws = new WebSocket("");
-      ws.OnOpen += this.OnWsOpen;
-      ws.OnClose += this.OnWsClose;
-      ws.OnMessage += this.OnWsMessage;
-      this._ws = ws;
     }
 
-    private void OnWsOpen (object sender, EventArgs e) {
-      Logger.Log?.Info("Websocket opened!");
+    private void OnGiftMessage (JObject danmakuJson) {
+      var data = danmakuJson["data"]?.Value<JObject>();
+      if (data != null) {
+        var username = data["uname"]?.Value<string>() ?? "";
+        var giftName = data["giftName"]?.Value<string>() ?? "";
+        var giftCount = data["num"]?.Value<int>() ?? 0;
+        Logger.Log?.Info($"[BiliSaber][GiftMessage] Thanks {username} for sending {giftName} x {giftCount}!");
+      }
     }
 
-    private void OnWsMessage (object sender, MessageEventArgs e) {
+    private void OnWelcomeMessage (JObject danmakuJson) {
+      var data = danmakuJson["data"]?.Value<JObject>();
+      if (data != null) {
+        var username = data["uname"]?.Value<string>() ?? "";
+        Logger.Log?.Info($"[BiliSaber][WelcomeMessage] Welcome {username} to join in this room");
+      }
     }
 
-    private void OnWsClose(object sender, CloseEventArgs e) {
-      Logger.Log?.Info("Bilibili Live Danmaku Websocket closed.");
-      this._ws = null;
+    private void DealWithChatMessage (string message) {
+      var danmakuJson = JObject.Parse(message);
+      var cmd = danmakuJson["cmd"]?.Value<string>();
+      switch (cmd) {
+        case "DANMU_MSG":
+          this.OnDanmakuMessage(danmakuJson);
+          break;
+
+        case "SEND_GIFT":
+          this.OnGiftMessage(danmakuJson);
+          break;
+
+        case "WELCOME":
+          this.OnWelcomeMessage(danmakuJson);
+          break;
+      }
     }
 
-    /// <summary>
-    /// Awake 是 Unity MonoBehaviour 的生命周期.
-    /// 在加载场景时运行, 即在游戏开始之前初始化变量或者游戏状态, 只执行一次.
-    /// </summary>
+    private void InitDanmakuClient () {
+      var client = new DanmakuClient(RoomId, Uid, true);
+
+      client.OnOpen += () => {
+        Logger.Log?.Info("[BiliSaber] Danmaku Client Opened.");
+      };
+
+      client.OnDanmakuMessage += message => {
+        Logger.Log?.Info("[BiliSaber] Get message.");
+
+        switch (message.Operation) {
+          case DanmakuOperation.GreetingAck:
+            Logger.Log?.Info("[BiliSaber] Greeting packet has been sent.");
+            break;
+
+          case DanmakuOperation.HeartBeatAck:
+            Logger.Log?.Info("[BiliSaber] HeartBeat packet has been sent.");
+            break;
+
+          case DanmakuOperation.ChatMessage:
+            this.DealWithChatMessage(message.Body);
+            break;
+        }
+      };
+
+      client.Connect();
+      this._danmakuClient = client;
+    }
+
+    private void DestroyDanmakuClient () {
+      if (this._danmakuClient != null) {
+        this._danmakuClient.Close();
+        this._danmakuClient = null;
+      }
+    }
+
     private void Awake () {
       // For this particular MonoBehaviour, we only want one instance to exist at any time, so store a reference to it in a static property
       // and destroy any that are created while one already exists.
@@ -75,7 +114,6 @@ namespace BiliSaber {
     /// </summary>
     private void Start () {
       Logger.Log?.Debug($"{this.name}: Start()");
-      this.WsConnect();
     }
 
     /// <summary>
@@ -96,14 +134,15 @@ namespace BiliSaber {
     /// Called when the script becomes enabled and active
     /// </summary>
     private void OnEnable () {
-
+      this.DestroyDanmakuClient();
+      this.InitDanmakuClient();
     }
 
     /// <summary>
     /// Called when the script becomes disabled or when it is being destroyed.
     /// </summary>
     private void OnDisable () {
-
+      this.DestroyDanmakuClient();
     }
 
     /// <summary>
@@ -111,6 +150,7 @@ namespace BiliSaber {
     /// </summary>
     private void OnDestroy () {
       Logger.Log?.Debug($"{this.name}: OnDestroy()");
+      this._danmakuClient = null;
       BiliSaberController.instance = null; // This MonoBehaviour is being destroyed, so set the static instance property to null.
     }
   }

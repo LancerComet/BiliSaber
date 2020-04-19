@@ -12,7 +12,7 @@ namespace BiliSaber.Bilibili {
 
     public delegate void OnOpenHandler ();
     public delegate void OnCloseHandler ();
-    public delegate void OnClosedHandler();
+    public delegate void OnClosedHandler ();
     public delegate void OnMessageHandler<in T> (T rawData);
     public delegate void OnErrorHandler (Exception error);
 
@@ -95,7 +95,6 @@ namespace BiliSaber.Bilibili {
     }
 
     #endregion
-
 
     /// <summary>
     /// Connect to Bilibili Live Danmaku Websocket server.

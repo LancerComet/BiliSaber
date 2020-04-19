@@ -3,10 +3,10 @@
 namespace BiliSaber.Console {
   class Program {
     static void Main (string[] args) {
-      var roomId = 31917;
+      var roomId = 14275133;
       var uid = 141042;
 
-      var client = new DanmakuClient(roomId, uid, false);
+      var client = new DanmakuClient(roomId, uid, true);
 
       client.OnOpen += () => {
         System.Console.WriteLine("Opened.");
