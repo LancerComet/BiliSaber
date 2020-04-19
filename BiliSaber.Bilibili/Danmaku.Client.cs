@@ -13,7 +13,7 @@ namespace BiliSaber.Bilibili {
     public delegate void OnOpenHandler ();
     public delegate void OnCloseHandler ();
     public delegate void OnClosedHandler ();
-    public delegate void OnMessageHandler<in T> (T rawData);
+    public delegate void OnMessageHandler<in T> (T message);
     public delegate void OnErrorHandler (Exception error);
 
     public event OnOpenHandler OnOpen;

@@ -1,6 +1,10 @@
-﻿using BiliSaber.Bilibili;
+﻿using System.Collections.Generic;
+using BiliSaber.Bilibili;
 using Newtonsoft.Json.Linq;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
+using Color = UnityEngine.Color;
 
 namespace BiliSaber {
   /// <summary>
@@ -12,14 +16,45 @@ namespace BiliSaber {
 
     private const int RoomId = 31917;
     private const int Uid = 141042;
+
     private DanmakuClient _danmakuClient;
+
+    private const int MaxDanmakuMessageCount = 10;
+    private readonly List<string> _danmakuMessages = new List<string>();
+    private TextMeshPro _textMesh;
+
+    private void UpdateText () {
+      if (this._textMesh == null) {
+        return;
+      }
+
+      var message = "";
+      this._danmakuMessages.ForEach(item => {
+        if (string.IsNullOrEmpty(message)) {
+          message += item;
+        } else {
+          message += "<br>" + item;
+        }
+      });
+      this._textMesh.SetText(message);
+    }
+
+    private void AddMessage (string message) {
+      if (this._danmakuMessages.Count >= MaxDanmakuMessageCount) {
+        this._danmakuMessages.RemoveAt(0);
+      }
+
+      this._danmakuMessages.Add(message);
+      this.UpdateText();
+    }
 
     private void OnDanmakuMessage (JObject danmakuJson) {
       var info = danmakuJson["info"]?.Value<JArray>();
       if (info != null) {
         var message = info[1]?.Value<string>() ?? "";
         var username = info[2]?.Value<JArray>()?[1]?.Value<string>() ?? "";
-        Logger.Log?.Info($"[BiliSaber][DanmakuMessage] {username}: {message}");
+        this.AddMessage($"[{username}]: {message}");
+        Logger.Log?.Info($"[DanmakuMessage] {username}: {message}");
       }
     }
 
@@ -29,7 +64,8 @@ namespace BiliSaber {
         var username = data["uname"]?.Value<string>() ?? "";
         var giftName = data["giftName"]?.Value<string>() ?? "";
         var giftCount = data["num"]?.Value<int>() ?? 0;
-        Logger.Log?.Info($"[BiliSaber][GiftMessage] Thanks {username} for sending {giftName} x {giftCount}!");
+        this.AddMessage($"感谢 {username} 投喂 {giftName} x {giftCount}");
+        Logger.Log?.Info($"[GiftMessage] Thanks {username} for sending {giftName} x {giftCount}!");
       }
     }
 
@@ -37,7 +73,8 @@ namespace BiliSaber {
       var data = danmakuJson["data"]?.Value<JObject>();
       if (data != null) {
         var username = data["uname"]?.Value<string>() ?? "";
-        Logger.Log?.Info($"[BiliSaber][WelcomeMessage] Welcome {username} to join in this room");
+        this.AddMessage($"欢迎 {username} 进入直播间");
+        Logger.Log?.Info($"[WelcomeMessage] Welcome {username} to join in this room");
       }
     }
 
@@ -59,40 +96,86 @@ namespace BiliSaber {
       }
     }
 
+    private void WsOnOpen () {
+      Logger.Log?.Info($"Danmaku Client Opened, Room {RoomId} as User {Uid}.");
+    }
+
+    private void WsOnDanmakuMessage (DanmakuMessage message) {
+      Logger.Log?.Info("Get message.");
+
+      switch (message.Operation) {
+        case DanmakuOperation.GreetingAck:
+          Logger.Log?.Info("Greeting packet has been sent.");
+          break;
+
+        case DanmakuOperation.HeartBeatAck:
+          Logger.Log?.Info("HeartBeat packet has been sent.");
+          break;
+
+        case DanmakuOperation.ChatMessage:
+          this.DealWithChatMessage(message.Body);
+          break;
+      }
+    }
+
+    private void WsOnClose () {
+      Logger.Log?.Info("Danmaku Client is going to shut down...");
+    }
+
+    private void WsOnClosed () {
+      this._danmakuClient.OnOpen -= this.WsOnOpen;
+      this._danmakuClient.OnDanmakuMessage -= this.WsOnDanmakuMessage;
+      this._danmakuClient.OnClose -= this.WsOnClose;
+      this._danmakuClient.OnClosed -= this.WsOnClosed;
+      this._danmakuClient = null;
+      Logger.Log?.Info("Danmaku Client closed.");
+    }
+
     private void InitDanmakuClient () {
+      if (this._danmakuClient != null) {
+        return;
+      }
+
       var client = new DanmakuClient(RoomId, Uid, true);
-
-      client.OnOpen += () => {
-        Logger.Log?.Info("[BiliSaber] Danmaku Client Opened.");
-      };
-
-      client.OnDanmakuMessage += message => {
-        Logger.Log?.Info("[BiliSaber] Get message.");
-
-        switch (message.Operation) {
-          case DanmakuOperation.GreetingAck:
-            Logger.Log?.Info("[BiliSaber] Greeting packet has been sent.");
-            break;
-
-          case DanmakuOperation.HeartBeatAck:
-            Logger.Log?.Info("[BiliSaber] HeartBeat packet has been sent.");
-            break;
-
-          case DanmakuOperation.ChatMessage:
-            this.DealWithChatMessage(message.Body);
-            break;
-        }
-      };
-
+      client.OnOpen += this.WsOnOpen ;
+      client.OnDanmakuMessage += this.WsOnDanmakuMessage ;
+      client.OnClose += this.WsOnClose ;
+      client.OnClosed += this.WsOnClosed ;
       client.Connect();
       this._danmakuClient = client;
     }
 
-    private void DestroyDanmakuClient () {
-      if (this._danmakuClient != null) {
-        this._danmakuClient.Close();
-        this._danmakuClient = null;
-      }
+    private void CloseDanmakuClient () {
+      this._danmakuClient?.Close();
+    }
+
+    private void InitUi () {
+      var canvas = this.gameObject.AddComponent<Canvas>();
+      canvas.renderMode = RenderMode.WorldSpace;
+      
+      var textContainer = new GameObject("DanmakuDialogTextContainer");
+      textContainer.transform.SetParent(canvas.transform);
+      
+      var scrollRect = textContainer.AddComponent<ScrollRect>();
+      scrollRect.horizontal = false;
+      scrollRect.vertical = true;
+
+      var textMesh = textContainer.AddComponent<TextMeshPro>();
+      textMesh.fontSize = 2;
+      textMesh.color = Color.white;
+      textMesh.enableWordWrapping = true;
+      textMesh.richText = true;
+      textMesh.font = Resources.Load("Source Han Sans Medium", typeof(TMP_FontAsset)) as TMP_FontAsset;
+      textMesh.SetText($"BiliSaber<br>RoomId: {RoomId}");
+      textMesh.transform.position = new Vector3(6.2f, 0f, -9.5f);
+      textMesh.transform.Rotate(0f, 90f, 0f);
+
+      scrollRect.content = textMesh.rectTransform;
+      this._textMesh = textMesh;
+      
+      var scrollbar = textContainer.AddComponent<Scrollbar>();
+      scrollbar.direction = Scrollbar.Direction.BottomToTop;
+      scrollRect.verticalScrollbar = scrollbar;
     }
 
     private void Awake () {
@@ -105,6 +188,7 @@ namespace BiliSaber {
       }
       GameObject.DontDestroyOnLoad(this); // Don't destroy this object on scene changes
       BiliSaberController.instance = this;
+      this.InitUi();
       Logger.Log?.Debug($"{this.name}: Awake()");
     }
 
@@ -134,7 +218,6 @@ namespace BiliSaber {
     /// Called when the script becomes enabled and active
     /// </summary>
     private void OnEnable () {
-      this.DestroyDanmakuClient();
       this.InitDanmakuClient();
     }
 
@@ -142,7 +225,7 @@ namespace BiliSaber {
     /// Called when the script becomes disabled or when it is being destroyed.
     /// </summary>
     private void OnDisable () {
-      this.DestroyDanmakuClient();
+      this.CloseDanmakuClient();
     }
 
     /// <summary>
@@ -150,6 +233,7 @@ namespace BiliSaber {
     /// </summary>
     private void OnDestroy () {
       Logger.Log?.Debug($"{this.name}: OnDestroy()");
+      this.CloseDanmakuClient();
       this._danmakuClient = null;
       BiliSaberController.instance = null; // This MonoBehaviour is being destroyed, so set the static instance property to null.
     }
