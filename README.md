@@ -4,9 +4,9 @@ Display Bilibili Live Danmaku in BeatSaber.
 
 ![screenshot](https://raw.githubusercontent.com/LancerComet/BiliSaber/master/Docs/screenshot.jpg)
 
-## Something you shold know
+## Something you should know
 
-I'm a green hand at doing Unity stuff so if you see something unreasonable just replace it with better codes.
+I'm a green hand at doing Unity stuff so if you see something unreasonable just replace it with reasonable codes.
 
 ## How to use
 
