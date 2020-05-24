@@ -1,4 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
+using System.Text.RegularExpressions;
 using BiliSaber.Bilibili;
 using Newtonsoft.Json.Linq;
 using TMPro;
@@ -113,7 +118,39 @@ namespace BiliSaber {
           break;
 
         case DanmakuOperation.ChatMessage:
-          this.DealWithChatMessage(message.Body);
+          var jsonString = "";
+          
+          // Version 2 message is compressed by using GZIP.
+          if (message.Version == 2) {
+            var buffer = message.Buffer;
+            var length = buffer.Length;
+            const int headerLength = DanmakuPacket.HeaderLength;
+
+            var rawContent = new byte[length - headerLength];
+            for (var i = headerLength; i < length; i++) {
+              rawContent[i - headerLength] = buffer[i];
+            }
+
+            byte[] inflatedBytes;
+            using (var deflatedStream = new GZipStream(new MemoryStream(rawContent), CompressionMode.Decompress)) {
+              using (var stream = new MemoryStream()) {
+                deflatedStream.CopyTo(stream);
+                inflatedBytes = stream.ToArray();
+              }
+            }
+
+            var reg = new Regex("\\{.+");
+            var jsonMatch = reg.Match(Encoding.UTF8.GetString(inflatedBytes));
+            if (!jsonMatch.Success) {
+              return;
+            }
+
+            jsonString = jsonMatch.Value;
+          } else {
+            jsonString = message.Body;
+          }
+
+          this.DealWithChatMessage(jsonString);
           break;
       }
     }

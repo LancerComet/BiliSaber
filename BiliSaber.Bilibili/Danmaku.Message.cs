@@ -12,6 +12,7 @@ namespace BiliSaber.Bilibili {
     public DanmakuOperation Operation { get; private set; }
     public int Sequence { get; private set; }
     public string Body { get; private set; }
+    public byte[] Buffer { get; private set; }
 
     public static DanmakuMessage ParseFirstPacket (byte[] buffer) {
       var packetLength = DataView.GetInt32(buffer);
@@ -26,7 +27,8 @@ namespace BiliSaber.Bilibili {
         Version = version,
         Operation = (DanmakuOperation)operation,
         Sequence = sequence,
-        Body = body
+        Body = body,
+        Buffer = buffer
       };
     }
   }

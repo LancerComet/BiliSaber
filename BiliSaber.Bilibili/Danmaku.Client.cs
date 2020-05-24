@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Timers;
 using WebSocketSharp;
 
@@ -28,7 +28,7 @@ namespace BiliSaber.Bilibili {
       this.Send(packet.PacketBuffer);
     }
 
-    private void SendHeartBeatPacket() {
+    private void SendHeartBeatPacket () {
       var packet = DanmakuPacket.CreateHeartBeatPacket(this._uid, this._roomId);
       this.Send(packet.PacketBuffer);
     }
