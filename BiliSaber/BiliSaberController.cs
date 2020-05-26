@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.RegularExpressions;
 using BiliSaber.Bilibili;
+using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using Newtonsoft.Json.Linq;
 using TMPro;
 using UnityEngine;
@@ -118,7 +119,7 @@ namespace BiliSaber {
           break;
 
         case DanmakuOperation.ChatMessage:
-          var jsonString = "";
+          string jsonString;
           
           // Version 2 message is compressed by using GZIP.
           if (message.Version == 2) {
@@ -132,20 +133,15 @@ namespace BiliSaber {
             }
 
             byte[] inflatedBytes;
-            using (var deflatedStream = new GZipStream(new MemoryStream(rawContent), CompressionMode.Decompress)) {
+            using (var inflateStream = new InflaterInputStream(new MemoryStream(rawContent))) {
               using (var stream = new MemoryStream()) {
-                deflatedStream.CopyTo(stream);
+                inflateStream.CopyTo(stream);
                 inflatedBytes = stream.ToArray();
               }
             }
 
-            var reg = new Regex("\\{.+");
-            var jsonMatch = reg.Match(Encoding.UTF8.GetString(inflatedBytes));
-            if (!jsonMatch.Success) {
-              return;
-            }
-
-            jsonString = jsonMatch.Value;
+            var danmakuMessage = DanmakuMessage.ParseFirstPacket(inflatedBytes);
+            jsonString = danmakuMessage.Body;
           } else {
             jsonString = message.Body;
           }

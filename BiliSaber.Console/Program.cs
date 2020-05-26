@@ -1,13 +1,38 @@
 ﻿using System.IO;
 using System.IO.Compression;
-using System.Text;
-using System.Text.RegularExpressions;
 using BiliSaber.Bilibili;
+using ICSharpCode.SharpZipLib.GZip;
+using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
+using Newtonsoft.Json.Linq;
 
 namespace BiliSaber.Console {
   class Program {
+    private static void OnDanmakuMessage (JObject danmakuJson) {
+      var info = danmakuJson["info"]?.Value<JArray>();
+      if (info != null) {
+        var message = info[1]?.Value<string>() ?? "";
+        var username = info[2]?.Value<JArray>()?[1]?.Value<string>() ?? "";
+        System.Console.WriteLine($"[{username}]: {message}");
+      }
+    }
+
+    private static void DealWithChatMessage (string message) {
+      var danmakuJson = JObject.Parse(message);
+      var cmd = danmakuJson["cmd"]?.Value<string>();
+      switch (cmd) {
+        case "DANMU_MSG":
+          OnDanmakuMessage(danmakuJson);
+          break;
+
+        default:
+          System.Console.WriteLine(cmd);
+          break;
+      }
+    }
+
+
     static void Main (string[] args) {
-      var roomId = 31917;
+      var roomId = 21379626;
       var uid = 141042;
 
       var client = new DanmakuClient(roomId, uid, true);
@@ -33,11 +58,13 @@ namespace BiliSaber.Console {
             break;
 
           case DanmakuOperation.ChatMessage:
+            string jsonString;
+
             // Version 2 message is compressed by using GZIP.
             if (message.Version == 2) {
               var buffer = message.Buffer;
               var length = buffer.Length;
-              const int headerLength = DanmakuPacket.HeaderLength;
+              const int headerLength = DanmakuPacket.HeaderLength + 2;
               
               var rawContent = new byte[length - headerLength];
               for (var i = headerLength; i < length; i++) {
@@ -45,24 +72,20 @@ namespace BiliSaber.Console {
               }
 
               byte[] inflatedBytes;
-              using (var deflatedStream = new GZipStream(new MemoryStream(rawContent), CompressionMode.Decompress)) {
+              using (var inflateStream = new InflaterInputStream(new MemoryStream(rawContent))) {
                 using (var stream = new MemoryStream()) {
-                  deflatedStream.CopyTo(stream);
+                  inflateStream.CopyTo(stream);
                   inflatedBytes = stream.ToArray();
                 }
               }
 
-              var reg = new Regex("\\{.+");
-              var jsonMatch = reg.Match(Encoding.UTF8.GetString(inflatedBytes));
-              if (!jsonMatch.Success) {
-                return;
-              }
-
-              var jsonString = jsonMatch.Value; 
-              System.Console.WriteLine(jsonString);
+              var danmakuMessage = DanmakuMessage.ParseFirstPacket(inflatedBytes);
+              jsonString = danmakuMessage.Body;
             } else {
-              System.Console.WriteLine(message.Body);
+              jsonString = message.Body;
             }
+
+            DealWithChatMessage(jsonString);
             break;
         }
       };

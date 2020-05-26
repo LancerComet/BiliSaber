@@ -13,13 +13,13 @@ namespace BiliSaber.Bilibili {
     public byte[] PacketBuffer { get; private set; }
 
     /// <summary>
-    /// Create Packet.
+    /// Constructor of DanmakuPacket.
     /// </summary>
     /// <param name="version"></param>
     /// <param name="operation"></param>
     /// <param name="sequence"></param>
     /// <param name="body"></param>
-    private void CreatePacket (int version, DanmakuOperation operation, int sequence, string body) {
+    public DanmakuPacket (int version, DanmakuOperation operation, int sequence, string body) {
       var headerBytes = new byte[HeaderLength];
       var bodyBuffer = Encoding.UTF8.GetBytes(body);
       DataView.SetInt32(headerBytes, PacketOffset, HeaderLength + bodyBuffer.Length);
@@ -32,17 +32,6 @@ namespace BiliSaber.Bilibili {
         headerBytes, bodyBuffer
       });
       this.PacketBuffer = packetBuffer;
-    }
-
-    /// <summary>
-    /// Constructor of DanmakuPacket.
-    /// </summary>
-    /// <param name="version"></param>
-    /// <param name="operation"></param>
-    /// <param name="sequence"></param>
-    /// <param name="body"></param>
-    public DanmakuPacket (int version, DanmakuOperation operation, int sequence, string body) {
-      this.CreatePacket(version, operation, sequence, body);
     }
 
     /// <summary>
