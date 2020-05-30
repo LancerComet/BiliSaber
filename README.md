@@ -10,10 +10,10 @@ I'm a green hand at doing Unity stuff so if you see something unreasonable just 
 
 ## How to use
 
-1. Open `BiliSaberController.cs` and replace `RoomId` and `Uid` to your own.
+1. Open `BiliSaberController.cs` and set `RoomId` and `Uid` to yours.
 
-2. Build project using Visual Studio. Results are located in `BiliSaber\bin\Debug`.
+2. Build project using Visual Studio. Outputs are located in `BiliSaber\bin\Debug`.
 
-3. Copy `websocket-sharp.dll` to `Beat Saber\Libs`, copy `BiliSaber.dll` and `BiliSaber.Bilibili.dll` to `Beat Saber\Plugins`.
+3. Copy `websocket-sharp.dll` and `ICSharpCode.SharpZipLib.dll` to `Beat Saber\Libs`, copy `BiliSaber.dll` and `BiliSaber.Bilibili.dll` to `Beat Saber\Plugins`.
 
 4. Done.
